@@ -3,7 +3,7 @@ import logging
 from math import isnan
 from typing import Any, Dict, List
 
-import pandas as pd
+# import pandas as pd
 from nornir.core.inventory import (
     Inventory,
     Groups,
@@ -12,6 +12,8 @@ from nornir.core.inventory import (
     Defaults,
     ConnectionOptions,
 )
+from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +38,9 @@ def _get_connection_options(data: Dict[str, Any]) -> Dict[str, ConnectionOptions
 
 
 def _get_host_data(data: Dict[str, Any]) -> Dict[str, Any]:
-    no_data_fields = ['name', 'hostname', 'port', 'username', 'password', 'platform']
+    no_data_fields = ["name", "hostname", "port", "username", "password", "platform"]
     resp_data = {}
-    netmiko_prefix = 'netmiko_'
+    netmiko_prefix = "netmiko_"
     for k, v in data.items():
         if (k not in no_data_fields) and (netmiko_prefix not in k):
             resp_data[k] = v if not _empty(v) else None
@@ -47,12 +49,7 @@ def _get_host_data(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_host_netmiko_options(data: Dict[str, Any]) -> Dict[str, Any]:
     extra_opts = {}
-    netmiko_options = {
-        'netmiko': {
-            'extras': {
-            }
-        }
-    }
+    netmiko_options = {"netmiko": {"extras": {}}}
     """:cvar
     conn_timeout=5,
         auth_timeout=None,  # Timeout to wait for authentication response
@@ -64,17 +61,17 @@ def _get_host_netmiko_options(data: Dict[str, Any]) -> Dict[str, Any]:
     
     
     """
-    int_keys = 'timeout conn_timeout auth_timeout banner_timeout blocking_timeout session_timeout'.split()
-    bool_keys = 'fast_cli'.split()
-    netmiko_prefix = 'netmiko_'
+    int_keys = "timeout conn_timeout auth_timeout banner_timeout blocking_timeout session_timeout".split()
+    bool_keys = "fast_cli".split()
+    netmiko_prefix = "netmiko_"
     for k, v in data.items():
         if netmiko_prefix in k:
-            new_k = k.replace(netmiko_prefix, '')
+            new_k = k.replace(netmiko_prefix, "")
 
             if new_k in int_keys:
                 extra_opts[new_k] = int(v)
             elif new_k in bool_keys:
-                if str(v).lower() in ['0', 'false', 'none']:
+                if str(v).lower() in ["0", "false", "none"]:
                     extra_opts[new_k] = False
                 else:
                     extra_opts[new_k] = True
@@ -86,7 +83,7 @@ def _get_host_netmiko_options(data: Dict[str, Any]) -> Dict[str, Any]:
                     extra_opts[new_k] = v
 
     if extra_opts:
-        netmiko_options['netmiko']['extras'] = extra_opts
+        netmiko_options["netmiko"]["extras"] = extra_opts
         return _get_connection_options(netmiko_options)
     else:
         return {}
@@ -94,7 +91,7 @@ def _get_host_netmiko_options(data: Dict[str, Any]) -> Dict[str, Any]:
 
 def _get_host_obj(data: Dict[str, Any]) -> Host:
     # get keypoint data and convert to string or int
-    name = data.get('name')
+    name = data.get("name")
     hostname = data.get("hostname")
     port = data.get("port", 22)
     username = data.get("username")
@@ -128,10 +125,7 @@ def _get_host_obj(data: Dict[str, Any]) -> Host:
 
 
 class FlatDataInventory:
-    def __init__(
-            self,
-            data: List[Dict]
-    ) -> None:
+    def __init__(self, data: List[Dict]) -> None:
         self.hosts_list = data
 
     def load(self) -> Inventory:
@@ -140,38 +134,44 @@ class FlatDataInventory:
         hosts = Hosts()
 
         for host_dict in self.hosts_list:
-            if not _empty(host_dict['name']):
-                hosts[host_dict['name']] = _get_host_obj(host_dict)
+            if not _empty(host_dict["name"]):
+                hosts[host_dict["name"]] = _get_host_obj(host_dict)
             else:
                 logger.error(f"HOST name is empty for data : {host_dict}")
-                raise Exception('HOST name must not be empty')
+                raise Exception("HOST name must not be empty")
 
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
 
 
 class CSVInventory(FlatDataInventory):
-    def __init__(
-            self,
-            csv_file: str = "inventory.csv"
-    ) -> None:
+    def __init__(self, csv_file: str = "inventory.csv") -> None:
         data = []
-        with open(csv_file, mode='r', encoding='utf8') as f:
+        with open(csv_file, mode="r", encoding="utf8") as f:
             for i in csv.DictReader(f):
                 data.append(i)
-        super().__init__(data=data)
 
 
 class ExcelInventory(FlatDataInventory):
-    def __init__(
-            self,
-            excel_file: str = "inventory.xlsx"
-    ) -> None:
-        self.hosts_list = []
-        dataframe = pd.read_excel(excel_file)
-        dataframe.fillna('')
-        items = dataframe.to_dict(orient='records')
+    """read in excel file and convert to inventory"""
+
+    def __init__(self, excel_file: str = "inventory.xlsx") -> None:
+        # self.hosts_list = []
+
+        items: list[dict] = []
+        # read in excel file
+        workbook = load_workbook(excel_file)
+        sheet: Worksheet = workbook.active
+        headers = [cell.value for cell in sheet[1]]
+
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            print(row)
+            items.append(dict(zip(headers, row)))
+
+        # dataframe = pd.read_excel(excel_file)
+        # dataframe.fillna('')
+        # items = dataframe.to_dict(orient='records')
         super().__init__(data=items)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ...

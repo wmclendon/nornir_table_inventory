@@ -164,12 +164,17 @@ class ExcelInventory(FlatDataInventory):
         headers = [cell.value for cell in sheet[1]]
 
         for row in sheet.iter_rows(min_row=2, values_only=True):
-            print(row)
-            items.append(dict(zip(headers, row)))
-
-        # dataframe = pd.read_excel(excel_file)
-        # dataframe.fillna('')
-        # items = dataframe.to_dict(orient='records')
+            # print(row)
+            item = {}
+            for idx, cell_value in enumerate(row):
+                # we skip the cell if the header is empty / None
+                if headers[idx] is None or headers[idx] == "":
+                    # print(f"WARNING: Empty header found in row - skipping cell value")
+                    pass
+                else:
+                    item[headers[idx]] = cell_value
+            items.append(item)
+        # print(f"DEBUG: {items}")
         super().__init__(data=items)
 
 

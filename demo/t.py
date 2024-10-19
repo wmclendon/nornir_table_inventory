@@ -21,6 +21,6 @@ inventory = {
 }
 
 nr = InitNornir(runner=runner, inventory=inventory)
-bj_devs = nr.filter(city='bj')
-results = bj_devs.run(task=netmiko_send_command, command_string='show version')
+bj_devs = nr.filter(city="bj")
+results = bj_devs.run(task=netmiko_send_command, command_string="show version")
 print_result(results)

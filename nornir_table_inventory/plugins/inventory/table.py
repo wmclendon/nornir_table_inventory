@@ -149,6 +149,7 @@ class CSVInventory(FlatDataInventory):
         with open(csv_file, mode="r", encoding="utf8") as f:
             for i in csv.DictReader(f):
                 data.append(i)
+        self.hosts_list = data
 
 
 class ExcelInventory(FlatDataInventory):
